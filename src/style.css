@@ -45,7 +45,7 @@
 
 html, body {
   width: 100%;
-  height: 100%;
+  height: 100dvh;
   overflow: hidden;
   background-color: var(--bg-dark);
   font-family: var(--font-family);
@@ -59,7 +59,7 @@ html, body {
 
 #app {
   width: 100%;
-  height: 100%;
+  height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -90,19 +90,12 @@ html, body {
 
 @media (max-width: 520px) or (max-height: 760px) {
   #game-container {
-    max-width: 100vw;
-    max-height: 100vh;
-    width: 100vw;
-    height: 150vw;
     border-radius: 0;
     box-shadow: none;
-  }
-}
-
-@media (max-width: 520px) and (min-aspect-ratio: 2/3), (max-height: 760px) and (min-aspect-ratio: 2/3) {
-  #game-container {
-    height: 100vh;
-    width: 66.67vh;
+    max-width: 100vw;
+    max-height: 100dvh;
+    width: min(100vw, 66.67dvh);
+    height: min(150vw, 100dvh);
   }
 }
 

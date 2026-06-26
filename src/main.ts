@@ -38,6 +38,8 @@ const leaderboardScreen = document.getElementById("leaderboard-screen") as HTMLD
 const playBtn = document.getElementById("play-btn") as HTMLButtonElement;
 const leaderboardBtn = document.getElementById("leaderboard-btn") as HTMLButtonElement;
 const settingsBtn = document.getElementById("settings-btn") as HTMLButtonElement;
+const menuMuteBtn = document.getElementById("menu-mute-btn") as HTMLButtonElement;
+const hudMuteBtn = document.getElementById("hud-mute-btn") as HTMLButtonElement;
 const resumeBtn = document.getElementById("resume-btn") as HTMLButtonElement;
 const restartFromPauseBtn = document.getElementById("restart-from-pause-btn") as HTMLButtonElement;
 const menuFromPauseBtn = document.getElementById("menu-from-pause-btn") as HTMLButtonElement;
@@ -112,6 +114,9 @@ async function init() {
     selectedSkin = storedSkin;
     updateSkinSelectorUI(selectedSkin);
   }
+
+  // 2.5. Sync mute UI state
+  updateMuteUI();
 
   // 3. Instantiate GameEngine
   engine = new GameEngine(
@@ -206,6 +211,17 @@ function setupUIEventListeners() {
   // Settings / Firebase Config open button
   settingsBtn.addEventListener("click", () => {
     openConfigModal();
+  });
+
+  // Mute button actions
+  menuMuteBtn.addEventListener("click", () => {
+    audio.toggleMute();
+    updateMuteUI();
+  });
+
+  hudMuteBtn.addEventListener("click", () => {
+    audio.toggleMute();
+    updateMuteUI();
   });
 
   configCloseBtn.addEventListener("click", () => {
@@ -336,6 +352,20 @@ function openConfigModal() {
     configAppId.value = currentConfig.appId || "";
   }
   configScreen.classList.remove("hidden");
+}
+
+function updateMuteUI() {
+  const isMuted = audio.getMuteState();
+  const volumeOnIcons = document.querySelectorAll(".volume-on");
+  const volumeOffIcons = document.querySelectorAll(".volume-off");
+
+  if (isMuted) {
+    volumeOnIcons.forEach(icon => icon.classList.add("hidden"));
+    volumeOffIcons.forEach(icon => icon.classList.remove("hidden"));
+  } else {
+    volumeOnIcons.forEach(icon => icon.classList.remove("hidden"));
+    volumeOffIcons.forEach(icon => icon.classList.add("hidden"));
+  }
 }
 
 /* ==========================================================================
