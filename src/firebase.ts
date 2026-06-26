@@ -1,10 +1,9 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, Firestore } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, Firestore, where } from "firebase/firestore";
 import { 
   getAuth, 
   signInWithPopup, 
   GoogleAuthProvider, 
-  signInAnonymously, 
   signOut, 
   onAuthStateChanged, 
   User, 
@@ -34,20 +33,7 @@ let isConnected = false;
 
 // 1. Get Firebase configuration from env or localStorage
 export function getFirebaseConfig(): Record<string, string> | null {
-  // Try localStorage first (browser dynamic config)
-  const localConfigStr = localStorage.getItem("find_my_worm_firebase_config");
-  if (localConfigStr) {
-    try {
-      const config = JSON.parse(localConfigStr);
-      if (config.apiKey && config.projectId) {
-        return config;
-      }
-    } catch (e) {
-      console.error("Failed to parse stored Firebase config", e);
-    }
-  }
-
-  // Fall back to environment variables
+  // 1. Prioritize environment variables (developer configuration)
   const envConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -60,6 +46,19 @@ export function getFirebaseConfig(): Record<string, string> | null {
 
   if (envConfig.apiKey && envConfig.projectId) {
     return envConfig;
+  }
+
+  // 2. Fall back to localStorage (browser dynamic config)
+  const localConfigStr = localStorage.getItem("find_my_worm_firebase_config");
+  if (localConfigStr) {
+    try {
+      const config = JSON.parse(localConfigStr);
+      if (config.apiKey && config.projectId) {
+        return config;
+      }
+    } catch (e) {
+      console.error("Failed to parse stored Firebase config", e);
+    }
   }
 
   return null;
@@ -206,10 +205,7 @@ export async function getLeaderboard(): Promise<{
         });
       });
 
-      if (scores.length > 0) {
-        return { isGlobal: true, scores };
-      }
-      // If Firestore exists but collection is empty, show empty list or fallback
+      return { isGlobal: true, scores };
     } catch (err) {
       console.warn("Firestore fetch failed, loading local leaderboard", err);
     }
@@ -246,17 +242,25 @@ export async function signInWithGoogle(): Promise<User | null> {
   }
 }
 
-export async function signInAnonymouslyUser(): Promise<User | null> {
-  if (!auth) {
-    console.error("Firebase Auth not initialized");
-    return null;
-  }
+export async function checkUsernameExists(name: string, currentUid: string): Promise<boolean> {
+  if (!db) return false;
   try {
-    const result = await signInAnonymously(auth);
-    return result.user;
+    const q = query(
+      collection(db, "leaderboard"),
+      where("name", "==", name.trim())
+    );
+    const querySnapshot = await getDocs(q);
+    let exists = false;
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.uid && data.uid !== currentUid) {
+        exists = true;
+      }
+    });
+    return exists;
   } catch (error) {
-    console.error("Anonymous sign in failed", error);
-    throw error;
+    console.error("Error checking username existence:", error);
+    return false;
   }
 }
 

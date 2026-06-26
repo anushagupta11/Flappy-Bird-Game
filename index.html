@@ -25,7 +25,19 @@
           </div>
           <div class="hud-right">
             <div class="hud-worms-counter">
-              <span class="worm-emoji">🐛</span>
+              <span class="worm-emoji">
+                <svg class="svg-icon bug" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                  <rect width="8" height="14" x="8" y="5" rx="4"></rect>
+                  <path d="m19 7-3 2"></path>
+                  <path d="m5 7 3 2"></path>
+                  <path d="m19 19-3-2"></path>
+                  <path d="m5 19 3-2"></path>
+                  <path d="M20 13h-4"></path>
+                  <path d="M4 13h4"></path>
+                  <path d="m10 4 1 2"></path>
+                  <path d="m14 4-1 2"></path>
+                </svg>
+              </span>
               <span id="hud-worms">0</span>
             </div>
             <button id="pause-btn" class="icon-btn" aria-label="Pause Game">
@@ -70,11 +82,23 @@
           <div id="profile-container" class="profile-container">
             <div id="profile-unauth" class="profile-card">
               <span class="auth-message">Sign in to save scores to leaderboard!</span>
-              <button id="menu-signin-btn" class="btn secondary-btn btn-sm">🔑 Sign In</button>
+              <button id="menu-signin-btn" class="btn secondary-btn btn-sm">
+                <svg class="svg-icon key" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                  <polyline points="10 17 15 12 10 7"></polyline>
+                  <line x1="15" y1="12" x2="3" y2="12"></line>
+                </svg>
+                Sign In
+              </button>
             </div>
             <div id="profile-auth" class="profile-card hidden">
               <div class="profile-info">
-                <span class="avatar-emoji">👤</span>
+                <span class="avatar-emoji">
+                  <svg class="svg-icon user-avatar" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </span>
                 <span id="profile-username" class="username">Flyer</span>
               </div>
               <button id="menu-signout-btn" class="btn link-btn btn-sm">Sign Out</button>
@@ -88,10 +112,21 @@
             </button>
             <div class="secondary-actions">
               <button id="leaderboard-btn" class="btn secondary-btn">
-                🏆 Leaderboard
+                <svg class="svg-icon trophy" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                  <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                  <path d="M4 22h16"></path>
+                  <path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"></path>
+                  <path d="M12 2a6 6 0 0 1 6 6v5a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"></path>
+                </svg>
+                Leaderboard
               </button>
-              <button id="settings-btn" class="btn secondary-btn">
-                ⚙️ Firebase Config
+              <button id="settings-btn" class="btn secondary-btn hidden">
+                <svg class="svg-icon settings" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                Firebase Config
               </button>
             </div>
           </div>
@@ -129,13 +164,26 @@
 
           <!-- High Score Banner -->
           <div id="new-high-score-badge" class="high-score-badge hidden">
-            ✨ NEW PERSONAL RECORD! ✨
+            <svg class="svg-icon star-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            NEW PERSONAL RECORD!
+            <svg class="svg-icon star-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
           </div>
 
           <!-- Leaderboard Score Submission (Unauthenticated) -->
           <div id="leaderboard-auth-prompt" class="submission-panel hidden">
-            <p>Sign in to submit your score to the global leaderboard!</p>
-            <button type="button" id="gameover-signin-btn" class="btn primary-btn btn-sm" style="margin-top: 10px; width: 100%;">🔑 Sign In to Submit</button>
+            <p>Sign in with Google to submit your score to the global leaderboard!</p>
+            <button type="button" id="gameover-signin-btn" class="btn primary-btn btn-sm" style="margin-top: 10px; width: 100%;">
+              <svg class="svg-icon key" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                <polyline points="10 17 15 12 10 7"></polyline>
+                <line x1="15" y1="12" x2="3" y2="12"></line>
+              </svg>
+              Sign In with Google
+            </button>
           </div>
 
           <!-- Leaderboard Score Submission -->
@@ -152,12 +200,24 @@
               />
               <button type="submit" id="submit-score-btn" class="btn success-btn">Submit</button>
             </form>
+            <div id="username-error-msg" class="error-msg hidden" style="color: var(--danger); font-size: 0.85rem; margin-top: 8px; font-weight: 600;">
+              Username exists, try another!
+            </div>
           </div>
 
           <!-- Game Over Leaderboard Panel -->
           <div class="leaderboard-preview-container">
             <div class="leaderboard-header">
-              <h3>🏆 TOP FLYERS</h3>
+              <h3>
+                <svg class="svg-icon trophy" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                  <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                  <path d="M4 22h16"></path>
+                  <path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"></path>
+                  <path d="M12 2a6 6 0 0 1 6 6v5a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"></path>
+                </svg>
+                TOP FLYERS
+              </h3>
               <span id="leaderboard-type-label" class="db-status-badge">Offline</span>
             </div>
             <div class="leaderboard-list-wrapper">
@@ -230,9 +290,6 @@
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#ffffff"/>
               </svg>
               Sign In with Google
-            </button>
-            <button id="anon-signin-btn" class="btn primary-btn btn-lg" style="width: 100%;">
-              🎭 Sign In Anonymously
             </button>
           </div>
 

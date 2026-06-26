@@ -10,9 +10,9 @@ import {
   clearFirebaseConfig, 
   getFirebaseConfig,
   signInWithGoogle,
-  signInAnonymouslyUser,
   logOut,
-  onAuthChanged
+  onAuthChanged,
+  checkUsernameExists
 } from "./firebase";
 import { AudioManager } from "./game/AudioManager";
 
@@ -76,10 +76,10 @@ const profileUsername = document.getElementById("profile-username") as HTMLSpanE
 const menuSignInBtn = document.getElementById("menu-signin-btn") as HTMLButtonElement;
 const menuSignOutBtn = document.getElementById("menu-signout-btn") as HTMLButtonElement;
 const googleSignInBtn = document.getElementById("google-signin-btn") as HTMLButtonElement;
-const anonSignInBtn = document.getElementById("anon-signin-btn") as HTMLButtonElement;
 const authCloseBtn = document.getElementById("auth-close-btn") as HTMLButtonElement;
 const leaderboardAuthPrompt = document.getElementById("leaderboard-auth-prompt") as HTMLDivElement;
 const gameoverSignInBtn = document.getElementById("gameover-signin-btn") as HTMLButtonElement;
+const usernameErrorMsg = document.getElementById("username-error-msg") as HTMLDivElement;
 
 // Auth State
 let currentUser: any = null;
@@ -173,23 +173,6 @@ function setupUIEventListeners() {
         Sign In with Google
       `;
       alert("Failed to sign in with Google.");
-    }
-  });
-
-  anonSignInBtn.addEventListener("click", async () => {
-    try {
-      anonSignInBtn.disabled = true;
-      const originalText = anonSignInBtn.textContent;
-      anonSignInBtn.textContent = "Connecting...";
-      await signInAnonymouslyUser();
-      anonSignInBtn.disabled = false;
-      anonSignInBtn.textContent = originalText;
-      authScreen.classList.add("hidden");
-      alert("Signed in anonymously!");
-    } catch (err) {
-      anonSignInBtn.disabled = false;
-      anonSignInBtn.textContent = "🎭 Sign In Anonymously";
-      alert("Failed to sign in anonymously.");
     }
   });
 
@@ -289,10 +272,24 @@ function setupUIEventListeners() {
     const name = playerNameInput.value.trim().substring(0, 10);
     if (!name) return;
 
+    // Reset error message state
+    usernameErrorMsg.classList.add("hidden");
+    submitScoreBtn.disabled = true;
+    submitScoreBtn.textContent = "Checking...";
+
+    // Validate unique username in Firestore if connected
+    if (currentUser) {
+      const isTaken = await checkUsernameExists(name, currentUser.uid);
+      if (isTaken) {
+        usernameErrorMsg.classList.remove("hidden");
+        submitScoreBtn.disabled = false;
+        submitScoreBtn.textContent = "Submit";
+        return;
+      }
+    }
+
     // Save name locally for convenience
     localStorage.setItem("find_my_worm_player_name", name);
-    
-    submitScoreBtn.disabled = true;
     submitScoreBtn.textContent = "Saving...";
 
     const score = Number(finalScoreVal.textContent) || 0;
@@ -470,7 +467,20 @@ async function loadLeaderboard() {
 
       const wormsSpan = document.createElement("span");
       wormsSpan.className = "player-worms-badge";
-      wormsSpan.innerHTML = `🐛 ${entry.worms}`;
+      wormsSpan.innerHTML = `
+        <svg class="svg-icon bug" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+          <rect width="8" height="14" x="8" y="5" rx="4"></rect>
+          <path d="m19 7-3 2"></path>
+          <path d="m5 7 3 2"></path>
+          <path d="m19 19-3-2"></path>
+          <path d="m5 19 3-2"></path>
+          <path d="M20 13h-4"></path>
+          <path d="M4 13h4"></path>
+          <path d="m10 4 1 2"></path>
+          <path d="m14 4-1 2"></path>
+        </svg>
+        ${entry.worms}
+      `;
 
       detailsDiv.appendChild(scoreSpan);
       detailsDiv.appendChild(wormsSpan);
@@ -501,17 +511,13 @@ function updateAuthUI() {
     profileUnauth.classList.add("hidden");
     profileAuth.classList.remove("hidden");
     
-    const displayName = currentUser.displayName || (currentUser.isAnonymous ? "Anonymous Guest" : "Flyer");
+    const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || "Flyer";
     profileUsername.textContent = displayName;
     
     // Autofill name on Game Over screen
-    if (displayName && displayName !== "Anonymous Guest") {
-      playerNameInput.value = displayName.substring(0, 10);
-    } else {
-      // Load saved name from localStorage fallback
-      const savedName = localStorage.getItem("find_my_worm_player_name");
-      playerNameInput.value = savedName || "Birdy";
-    }
+    const savedName = localStorage.getItem("find_my_worm_player_name");
+    playerNameInput.value = savedName || displayName.substring(0, 10);
+    usernameErrorMsg.classList.add("hidden");
 
     // Toggle Game Over submission panel
     leaderboardAuthPrompt.classList.add("hidden");
@@ -523,6 +529,7 @@ function updateAuthUI() {
     // User is logged out
     profileUnauth.classList.remove("hidden");
     profileAuth.classList.add("hidden");
+    usernameErrorMsg.classList.add("hidden");
     
     // Toggle Game Over submission panel
     leaderboardSubmission.classList.add("hidden");
