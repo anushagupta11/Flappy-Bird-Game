@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Find My Worm - Bird and Worm [MintFire]</title>
+    <!-- Google Fonts for modern premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Plus+Jakarta+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐛</text></svg>" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Game Container -->
+      <div id="game-container">
+        <!-- Canvas for Game Loop Rendering -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Dynamic HUD (Heads-Up Display) -->
+        <div id="hud" class="hidden">
+          <div class="hud-left">
+            <div id="hud-score-label">SCORE</div>
+            <div id="hud-score">0</div>
+          </div>
+          <div class="hud-right">
+            <div class="hud-worms-counter">
+              <span class="worm-emoji">🐛</span>
+              <span id="hud-worms">0</span>
+            </div>
+            <button id="pause-btn" class="icon-btn" aria-label="Pause Game">
+              <svg viewBox="0 0 24 24" width="24" height="24">
+                <rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor"></rect>
+                <rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor"></rect>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Screens Overlays -->
+
+        <!-- 1. Start Screen -->
+        <div id="start-screen" class="screen">
+          <div class="brand">
+            <div class="brand-badge">Bird and Worm [MintFire]</div>
+            <h1 class="game-title">Find My Worm</h1>
+            <p class="game-subtitle">Tap/Click or press Space to jump! Collect worms & dodge obstacles.</p>
+          </div>
+
+          <!-- Character Skin Selection -->
+          <div class="skin-selector-container">
+            <h3>Select Your Bird</h3>
+            <div class="skin-options">
+              <button class="skin-option active" data-skin="yellow" aria-label="Sunny Yellow Skin">
+                <span class="skin-preview yellow"></span>
+                <span class="skin-name">Sunny</span>
+              </button>
+              <button class="skin-option" data-skin="blue" aria-label="Sky Blue Skin">
+                <span class="skin-preview blue"></span>
+                <span class="skin-name">Sky</span>
+              </button>
+              <button class="skin-option" data-skin="red" aria-label="Ruby Red Skin">
+                <span class="skin-preview red"></span>
+                <span class="skin-name">Ruby</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Main Actions -->
+          <div class="screen-actions">
+            <button id="play-btn" class="btn primary-btn btn-lg pulse-animation">
+              Play Game
+            </button>
+            <div class="secondary-actions">
+              <button id="leaderboard-btn" class="btn secondary-btn">
+                🏆 Leaderboard
+              </button>
+              <button id="settings-btn" class="btn secondary-btn">
+                ⚙️ Firebase Config
+              </button>
+            </div>
+          </div>
+
+          <footer class="footer-credits">
+            Developed by Bird and Worm [MintFire] • v1.0.0
+          </footer>
+        </div>
+
+        <!-- 2. Pause Overlay -->
+        <div id="pause-screen" class="screen hidden">
+          <h2 class="screen-title">Game Paused</h2>
+          <div class="screen-actions vertical">
+            <button id="resume-btn" class="btn primary-btn">Resume</button>
+            <button id="restart-from-pause-btn" class="btn secondary-btn">Restart</button>
+            <button id="menu-from-pause-btn" class="btn secondary-btn">Main Menu</button>
+          </div>
+        </div>
+
+        <!-- 3. Game Over Screen -->
+        <div id="game-over-screen" class="screen hidden">
+          <div class="brand-badge danger">Game Over</div>
+          <h2 class="game-over-title">Flight Ended</h2>
+
+          <div class="stats-panel">
+            <div class="stat-item">
+              <span class="stat-label">SCORE</span>
+              <span id="final-score" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">WORMS</span>
+              <span id="final-worms" class="stat-value">0</span>
+            </div>
+          </div>
+
+          <!-- High Score Banner -->
+          <div id="new-high-score-badge" class="high-score-badge hidden">
+            ✨ NEW PERSONAL RECORD! ✨
+          </div>
+
+          <!-- Leaderboard Score Submission -->
+          <div id="leaderboard-submission" class="submission-panel">
+            <p>Submit your score to the leaderboard!</p>
+            <form id="score-form" class="score-submit-form">
+              <input 
+                type="text" 
+                id="player-name" 
+                placeholder="Your Name (max 10)" 
+                maxlength="10" 
+                required 
+                autocomplete="off"
+              />
+              <button type="submit" id="submit-score-btn" class="btn success-btn">Submit</button>
+            </form>
+          </div>
+
+          <!-- Game Over Leaderboard Panel -->
+          <div class="leaderboard-preview-container">
+            <div class="leaderboard-header">
+              <h3>🏆 TOP FLYERS</h3>
+              <span id="leaderboard-type-label" class="db-status-badge">Offline</span>
+            </div>
+            <div class="leaderboard-list-wrapper">
+              <ol id="leaderboard-list">
+                <li class="loading-item">Loading scores...</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="screen-actions">
+            <button id="restart-btn" class="btn primary-btn btn-lg">Play Again</button>
+            <button id="menu-btn" class="btn secondary-btn">Main Menu</button>
+          </div>
+        </div>
+
+        <!-- 4. Firebase Config Settings Modal -->
+        <div id="config-screen" class="screen hidden">
+          <h2 class="screen-title">Firebase Database Setup</h2>
+          <p class="config-desc">
+            Connect to Firestore to sync the global leaderboard! Otherwise, the game uses local storage automatically.
+          </p>
+
+          <form id="firebase-config-form">
+            <div class="form-group">
+              <label for="config-apiKey">API Key</label>
+              <input type="text" id="config-apiKey" placeholder="AIzaSy..." />
+            </div>
+            <div class="form-group">
+              <label for="config-authDomain">Auth Domain</label>
+              <input type="text" id="config-authDomain" placeholder="your-app.firebaseapp.com" />
+            </div>
+            <div class="form-group">
+              <label for="config-projectId">Project ID</label>
+              <input type="text" id="config-projectId" placeholder="your-app-id" />
+            </div>
+            <div class="form-group">
+              <label for="config-storageBucket">Storage Bucket</label>
+              <input type="text" id="config-storageBucket" placeholder="your-app.appspot.com" />
+            </div>
+            <div class="form-group">
+              <label for="config-messagingSenderId">Messaging Sender ID</label>
+              <input type="text" id="config-messagingSenderId" placeholder="1234567890" />
+            </div>
+            <div class="form-group">
+              <label for="config-appId">App ID</label>
+              <input type="text" id="config-appId" placeholder="1:1234:web:abcd..." />
+            </div>
+            
+            <div class="config-actions">
+              <button type="submit" class="btn success-btn">Save & Connect</button>
+              <button type="button" id="config-clear-btn" class="btn danger-btn">Clear Config</button>
+              <button type="button" id="config-close-btn" class="btn secondary-btn">Close</button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Main JS/TS Entrypoint -->
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,10 @@
+# Environment Files
+.env
+.env.local
+.env.production
+.env.development
+
+# Dependencies & Build Output
+node_modules/
+dist/
+dist-ssr/
