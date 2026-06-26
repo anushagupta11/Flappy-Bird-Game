@@ -105,8 +105,6 @@ export class GameEngine {
   }
 
   public resize(): void {
-    // Match visual canvas rendering dimensions
-    const rect = this.canvas.getBoundingClientRect();
     // Maintain 480x720 internal coordinates while drawing
     this.background.resize(this.canvas.width, this.canvas.height);
     this.obstacles.reset(this.canvas.width, this.canvas.height);
