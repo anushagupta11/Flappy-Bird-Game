@@ -32,6 +32,7 @@ const startScreen = document.getElementById("start-screen") as HTMLDivElement;
 const pauseScreen = document.getElementById("pause-screen") as HTMLDivElement;
 const gameOverScreen = document.getElementById("game-over-screen") as HTMLDivElement;
 const configScreen = document.getElementById("config-screen") as HTMLDivElement;
+const leaderboardScreen = document.getElementById("leaderboard-screen") as HTMLDivElement;
 
 // Buttons & Actions
 const playBtn = document.getElementById("play-btn") as HTMLButtonElement;
@@ -55,6 +56,9 @@ const submitScoreBtn = document.getElementById("submit-score-btn") as HTMLButton
 // Leaderboard Display
 const leaderboardList = document.getElementById("leaderboard-list") as HTMLOListElement;
 const leaderboardTypeLabel = document.getElementById("leaderboard-type-label") as HTMLSpanElement;
+const globalLeaderboardList = document.getElementById("global-leaderboard-list") as HTMLOListElement;
+const globalLeaderboardTypeLabel = document.getElementById("global-leaderboard-type-label") as HTMLSpanElement;
+const leaderboardBackBtn = document.getElementById("leaderboard-back-btn") as HTMLButtonElement;
 
 // Config Modal Form
 const configForm = document.getElementById("firebase-config-form") as HTMLFormElement;
@@ -239,14 +243,14 @@ function setupUIEventListeners() {
     }
   });
 
-  // Main menu leaderboard trigger (displays leaderboard modal if we had one, or shortcut to gameover view)
-  leaderboardBtn.addEventListener("click", async () => {
-    // Show game over overlay structure but format it as just a leaderboard view
-    onStateChange("GAMEOVER", 0, 0);
-    // Hide game-specific stats and submit options
-    finalScoreVal.parentElement!.parentElement!.classList.add("hidden");
-    leaderboardSubmission.classList.add("hidden");
-    newHighScoreBadge.classList.add("hidden");
+  // Main menu leaderboard trigger
+  leaderboardBtn.addEventListener("click", () => {
+    showLeaderboardScreen();
+  });
+
+  // Leaderboard back to menu trigger
+  leaderboardBackBtn.addEventListener("click", () => {
+    onStateChange("START", 0, 0);
   });
 
   // Skin selectors
@@ -344,6 +348,7 @@ async function onStateChange(state: GameState, score: number, worms: number) {
   pauseScreen.classList.add("hidden");
   gameOverScreen.classList.add("hidden");
   configScreen.classList.add("hidden");
+  leaderboardScreen.classList.add("hidden");
 
   switch (state) {
     case "START":
@@ -400,6 +405,20 @@ async function onStateChange(state: GameState, score: number, worms: number) {
   }
 }
 
+function showLeaderboardScreen() {
+  // Hide other screens
+  startScreen.classList.add("hidden");
+  pauseScreen.classList.add("hidden");
+  gameOverScreen.classList.add("hidden");
+  configScreen.classList.add("hidden");
+  
+  // Show leaderboard screen
+  leaderboardScreen.classList.remove("hidden");
+  
+  // Load ranking scores
+  loadLeaderboard();
+}
+
 function onScoreUpdate(score: number) {
   hudScore.textContent = String(score);
 }
@@ -413,35 +432,47 @@ function onWormsUpdate(worms: number) {
    ========================================================================== */
 
 async function loadLeaderboard() {
-  leaderboardList.innerHTML = '<li class="loading-item">Fetching ranking...</li>';
+  const loadingHtml = '<li class="loading-item">Fetching ranking...</li>';
+  leaderboardList.innerHTML = loadingHtml;
+  globalLeaderboardList.innerHTML = loadingHtml;
   
+  const statusText = isFirebaseConnected() ? "Global (DB)" : "Offline (Local)";
+  leaderboardTypeLabel.textContent = statusText;
+  globalLeaderboardTypeLabel.textContent = statusText;
   if (isFirebaseConnected()) {
-    leaderboardTypeLabel.textContent = "Global (DB)";
     leaderboardTypeLabel.classList.add("online");
+    globalLeaderboardTypeLabel.classList.add("online");
   } else {
-    leaderboardTypeLabel.textContent = "Offline (Local)";
     leaderboardTypeLabel.classList.remove("online");
+    globalLeaderboardTypeLabel.classList.remove("online");
   }
 
   try {
     const { isGlobal, scores } = await getLeaderboard();
     
     // Update badge type dynamically if it changed during load
+    const actualStatusText = isGlobal ? "Global (DB)" : "Offline (Local)";
+    leaderboardTypeLabel.textContent = actualStatusText;
+    globalLeaderboardTypeLabel.textContent = actualStatusText;
     if (isGlobal) {
-      leaderboardTypeLabel.textContent = "Global (DB)";
       leaderboardTypeLabel.classList.add("online");
+      globalLeaderboardTypeLabel.classList.add("online");
     } else {
-      leaderboardTypeLabel.textContent = "Offline (Local)";
       leaderboardTypeLabel.classList.remove("online");
+      globalLeaderboardTypeLabel.classList.remove("online");
     }
 
     if (scores.length === 0) {
-      leaderboardList.innerHTML = '<li class="loading-item">No records yet! Be the first!</li>';
+      const emptyHtml = '<li class="loading-item">No records yet! Be the first!</li>';
+      leaderboardList.innerHTML = emptyHtml;
+      globalLeaderboardList.innerHTML = emptyHtml;
       return;
     }
 
     leaderboardList.innerHTML = "";
-    scores.forEach((entry) => {
+    globalLeaderboardList.innerHTML = "";
+
+    const createScoreItem = (entry: any) => {
       const li = document.createElement("li");
       
       const infoDiv = document.createElement("div");
@@ -487,12 +518,18 @@ async function loadLeaderboard() {
 
       li.appendChild(infoDiv);
       li.appendChild(detailsDiv);
+      return li;
+    };
 
-      leaderboardList.appendChild(li);
+    scores.forEach((entry) => {
+      leaderboardList.appendChild(createScoreItem(entry));
+      globalLeaderboardList.appendChild(createScoreItem(entry));
     });
   } catch (err) {
     console.error("Leaderboard render error", err);
-    leaderboardList.innerHTML = '<li class="loading-item">Failed to load leaderboard</li>';
+    const errorHtml = '<li class="loading-item">Failed to load leaderboard</li>';
+    leaderboardList.innerHTML = errorHtml;
+    globalLeaderboardList.innerHTML = errorHtml;
   }
 }
 

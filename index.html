@@ -233,6 +233,37 @@
           </div>
         </div>
 
+        <!-- 3.5. Leaderboard Screen -->
+        <div id="leaderboard-screen" class="screen hidden">
+          <div class="brand-badge">Hall of Fame</div>
+          <h2 class="screen-title" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <svg class="svg-icon trophy" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 28px; height: 28px; color: var(--warning);">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+              <path d="M4 22h16"></path>
+              <path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"></path>
+              <path d="M12 2a6 6 0 0 1 6 6v5a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"></path>
+            </svg>
+            Global Rankings
+          </h2>
+
+          <div class="leaderboard-preview-container" style="width: 100%; flex: 1; margin: 20px 0; display: flex; flex-direction: column;">
+            <div class="leaderboard-header">
+              <h3>TOP FLYERS</h3>
+              <span id="global-leaderboard-type-label" class="db-status-badge">Offline</span>
+            </div>
+            <div class="leaderboard-list-wrapper" style="flex: 1; overflow-y: auto;">
+              <ol id="global-leaderboard-list">
+                <li class="loading-item">Loading scores...</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="screen-actions" style="width: 100%;">
+            <button id="leaderboard-back-btn" class="btn secondary-btn" style="width: 100%;">Back to Menu</button>
+          </div>
+        </div>
+
         <!-- 4. Firebase Config Settings Modal -->
         <div id="config-screen" class="screen hidden">
           <h2 class="screen-title">Firebase Database Setup</h2>
