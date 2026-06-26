@@ -1,11 +1,22 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, Firestore } from "firebase/firestore";
+import { 
+  getAuth, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signInAnonymously, 
+  signOut, 
+  onAuthStateChanged, 
+  User, 
+  Auth 
+} from "firebase/auth";
 
 interface ScoreEntry {
   name: string;
   score: number;
   worms: number;
   timestamp: number;
+  uid?: string | null;
 }
 
 export interface LeaderboardItem {
@@ -17,7 +28,9 @@ export interface LeaderboardItem {
 
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
+export let auth: Auth | null = null;
 let isConnected = false;
+
 
 // 1. Get Firebase configuration from env or localStorage
 export function getFirebaseConfig(): Record<string, string> | null {
@@ -74,13 +87,15 @@ export async function initializeFirebase(customConfig?: Record<string, string>):
     }
 
     db = getFirestore(app);
+    auth = getAuth(app);
     isConnected = true;
-    console.log("Firebase Firestore initialized successfully!");
+    console.log("Firebase Firestore and Auth initialized successfully!");
     return true;
   } catch (err) {
     console.error("Failed to initialize Firebase", err);
     isConnected = false;
     db = null;
+    auth = null;
     app = null;
     return false;
   }
@@ -145,6 +160,7 @@ export async function submitScore(
     score,
     worms,
     timestamp: Date.now(),
+    uid: auth?.currentUser?.uid || null,
   };
 
   // Always save locally as a backup
@@ -210,3 +226,55 @@ export async function getLeaderboard(): Promise<{
 
   return { isGlobal: false, scores };
 }
+
+/* ==========================================================================
+   Authentication Operations
+   ========================================================================== */
+
+export async function signInWithGoogle(): Promise<User | null> {
+  if (!auth) {
+    console.error("Firebase Auth not initialized");
+    return null;
+  }
+  const provider = new GoogleAuthProvider();
+  try {
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  } catch (error) {
+    console.error("Google sign in failed", error);
+    throw error;
+  }
+}
+
+export async function signInAnonymouslyUser(): Promise<User | null> {
+  if (!auth) {
+    console.error("Firebase Auth not initialized");
+    return null;
+  }
+  try {
+    const result = await signInAnonymously(auth);
+    return result.user;
+  } catch (error) {
+    console.error("Anonymous sign in failed", error);
+    throw error;
+  }
+}
+
+export async function logOut(): Promise<void> {
+  if (!auth) return;
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error("Sign out failed", error);
+    throw error;
+  }
+}
+
+export function onAuthChanged(callback: (user: User | null) => void): () => void {
+  if (!auth) {
+    callback(null);
+    return () => {};
+  }
+  return onAuthStateChanged(auth, callback);
+}
+

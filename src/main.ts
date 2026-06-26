@@ -8,7 +8,11 @@ import {
   isFirebaseConnected, 
   saveFirebaseConfig, 
   clearFirebaseConfig, 
-  getFirebaseConfig 
+  getFirebaseConfig,
+  signInWithGoogle,
+  signInAnonymouslyUser,
+  logOut,
+  onAuthChanged
 } from "./firebase";
 import { AudioManager } from "./game/AudioManager";
 
@@ -63,6 +67,23 @@ const configAppId = document.getElementById("config-appId") as HTMLInputElement;
 const configCloseBtn = document.getElementById("config-close-btn") as HTMLButtonElement;
 const configClearBtn = document.getElementById("config-clear-btn") as HTMLButtonElement;
 
+// Auth DOM Elements
+const authScreen = document.getElementById("auth-screen") as HTMLDivElement;
+const profileContainer = document.getElementById("profile-container") as HTMLDivElement;
+const profileUnauth = document.getElementById("profile-unauth") as HTMLDivElement;
+const profileAuth = document.getElementById("profile-auth") as HTMLDivElement;
+const profileUsername = document.getElementById("profile-username") as HTMLSpanElement;
+const menuSignInBtn = document.getElementById("menu-signin-btn") as HTMLButtonElement;
+const menuSignOutBtn = document.getElementById("menu-signout-btn") as HTMLButtonElement;
+const googleSignInBtn = document.getElementById("google-signin-btn") as HTMLButtonElement;
+const anonSignInBtn = document.getElementById("anon-signin-btn") as HTMLButtonElement;
+const authCloseBtn = document.getElementById("auth-close-btn") as HTMLButtonElement;
+const leaderboardAuthPrompt = document.getElementById("leaderboard-auth-prompt") as HTMLDivElement;
+const gameoverSignInBtn = document.getElementById("gameover-signin-btn") as HTMLButtonElement;
+
+// Auth State
+let currentUser: any = null;
+
 // Active Skin state
 let selectedSkin: BirdSkin = "yellow";
 
@@ -74,6 +95,12 @@ async function init() {
   // 1. Initial connection attempt to Firebase
   const firebaseSuccess = await initializeFirebase();
   console.log("Firebase connection status:", firebaseSuccess ? "CONNECTED" : "OFFLINE/LOCAL STORAGE ONLY");
+
+  // Hook up auth change listener
+  onAuthChanged((user) => {
+    currentUser = user;
+    updateAuthUI();
+  });
 
   // 2. Load last skin selection
   const storedSkin = localStorage.getItem("find_my_worm_bird_skin") as BirdSkin;
@@ -103,6 +130,69 @@ async function init() {
    ========================================================================== */
 
 function setupUIEventListeners() {
+  // Auth Screen Triggers
+  menuSignInBtn.addEventListener("click", () => {
+    authScreen.classList.remove("hidden");
+  });
+
+  menuSignOutBtn.addEventListener("click", async () => {
+    if (confirm("Are you sure you want to sign out?")) {
+      await logOut();
+      alert("Signed out successfully!");
+    }
+  });
+
+  gameoverSignInBtn.addEventListener("click", () => {
+    authScreen.classList.remove("hidden");
+  });
+
+  authCloseBtn.addEventListener("click", () => {
+    authScreen.classList.add("hidden");
+  });
+
+  // Auth Operations
+  googleSignInBtn.addEventListener("click", async () => {
+    try {
+      googleSignInBtn.disabled = true;
+      const originalText = googleSignInBtn.innerHTML;
+      googleSignInBtn.textContent = "Connecting...";
+      await signInWithGoogle();
+      googleSignInBtn.disabled = false;
+      googleSignInBtn.innerHTML = originalText;
+      authScreen.classList.add("hidden");
+      alert("Signed in with Google successfully!");
+    } catch (err) {
+      googleSignInBtn.disabled = false;
+      googleSignInBtn.innerHTML = `
+        <svg class="btn-icon" viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg" style="margin-right: 10px; fill: white;">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#ffffff"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#ffffff"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#ffffff"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#ffffff"/>
+        </svg>
+        Sign In with Google
+      `;
+      alert("Failed to sign in with Google.");
+    }
+  });
+
+  anonSignInBtn.addEventListener("click", async () => {
+    try {
+      anonSignInBtn.disabled = true;
+      const originalText = anonSignInBtn.textContent;
+      anonSignInBtn.textContent = "Connecting...";
+      await signInAnonymouslyUser();
+      anonSignInBtn.disabled = false;
+      anonSignInBtn.textContent = originalText;
+      authScreen.classList.add("hidden");
+      alert("Signed in anonymously!");
+    } catch (err) {
+      anonSignInBtn.disabled = false;
+      anonSignInBtn.textContent = "🎭 Sign In Anonymously";
+      alert("Failed to sign in anonymously.");
+    }
+  });
+
   // Play button on menu
   playBtn.addEventListener("click", () => {
     engine.startGame();
@@ -282,13 +372,20 @@ async function onStateChange(state: GameState, score: number, worms: number) {
       finalWormsVal.textContent = String(worms);
       finalScoreVal.parentElement!.parentElement!.classList.remove("hidden");
 
-      // Enable name submission for positive scores
+      // Enable name/auth submission for positive scores
       if (score > 0) {
-        leaderboardSubmission.classList.remove("hidden");
-        submitScoreBtn.disabled = false;
-        submitScoreBtn.textContent = "Submit";
+        if (currentUser) {
+          leaderboardSubmission.classList.remove("hidden");
+          leaderboardAuthPrompt.classList.add("hidden");
+          submitScoreBtn.disabled = false;
+          submitScoreBtn.textContent = "Submit";
+        } else {
+          leaderboardSubmission.classList.add("hidden");
+          leaderboardAuthPrompt.classList.remove("hidden");
+        }
       } else {
         leaderboardSubmission.classList.add("hidden");
+        leaderboardAuthPrompt.classList.add("hidden");
       }
 
       // Check high score record
@@ -386,6 +483,53 @@ async function loadLeaderboard() {
   } catch (err) {
     console.error("Leaderboard render error", err);
     leaderboardList.innerHTML = '<li class="loading-item">Failed to load leaderboard</li>';
+  }
+}
+
+function updateAuthUI() {
+  if (!isFirebaseConnected()) {
+    // If Firebase is not connected, hide profile and auth elements
+    profileContainer.classList.add("hidden");
+    leaderboardAuthPrompt.classList.add("hidden");
+    return;
+  }
+
+  profileContainer.classList.remove("hidden");
+
+  if (currentUser) {
+    // User is logged in
+    profileUnauth.classList.add("hidden");
+    profileAuth.classList.remove("hidden");
+    
+    const displayName = currentUser.displayName || (currentUser.isAnonymous ? "Anonymous Guest" : "Flyer");
+    profileUsername.textContent = displayName;
+    
+    // Autofill name on Game Over screen
+    if (displayName && displayName !== "Anonymous Guest") {
+      playerNameInput.value = displayName.substring(0, 10);
+    } else {
+      // Load saved name from localStorage fallback
+      const savedName = localStorage.getItem("find_my_worm_player_name");
+      playerNameInput.value = savedName || "Birdy";
+    }
+
+    // Toggle Game Over submission panel
+    leaderboardAuthPrompt.classList.add("hidden");
+    const score = Number(finalScoreVal.textContent) || 0;
+    if (score > 0 && !gameOverScreen.classList.contains("hidden")) {
+      leaderboardSubmission.classList.remove("hidden");
+    }
+  } else {
+    // User is logged out
+    profileUnauth.classList.remove("hidden");
+    profileAuth.classList.add("hidden");
+    
+    // Toggle Game Over submission panel
+    leaderboardSubmission.classList.add("hidden");
+    const score = Number(finalScoreVal.textContent) || 0;
+    if (score > 0 && !gameOverScreen.classList.contains("hidden")) {
+      leaderboardAuthPrompt.classList.remove("hidden");
+    }
   }
 }
 
