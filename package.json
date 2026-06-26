@@ -9,9 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "firebase": "^10.8.0"
+    "firebase": "^10.14.1",
+    "firebase-admin": "^14.1.0"
   },
   "devDependencies": {
+    "firebase-tools": "^15.22.3",
     "typescript": "^5.2.2",
     "vite": "^5.1.4"
   }
