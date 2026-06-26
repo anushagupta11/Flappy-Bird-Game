@@ -92,10 +92,10 @@ html, body {
   #game-container {
     border-radius: 0;
     box-shadow: none;
+    width: 100vw;
+    height: 100dvh;
     max-width: 100vw;
     max-height: 100dvh;
-    width: min(100vw, 66.67dvh);
-    height: min(150vw, 100dvh);
   }
 }
 
