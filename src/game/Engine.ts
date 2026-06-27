@@ -261,7 +261,7 @@ export class GameEngine {
       this.triggerGameOver();
       return;
     }
-    if (this.bird.y + this.bird.collisionRadius >= floorY) {
+    if (this.bird.y + this.bird.radius >= floorY - 2) {
       this.triggerGameOver();
       return;
     }
