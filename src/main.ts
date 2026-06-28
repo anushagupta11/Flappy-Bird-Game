@@ -12,7 +12,9 @@ import {
   signInWithGoogle,
   logOut,
   onAuthChanged,
-  checkUsernameExists
+  checkUsernameExists,
+  subscribeLeaderboard,
+  getUserHighScore
 } from "./firebase";
 import { AudioManager } from "./game/AudioManager";
 
@@ -89,6 +91,11 @@ const usernameErrorMsg = document.getElementById("username-error-msg") as HTMLDi
 
 // Auth State
 let currentUser: any = null;
+let cachedUsername: string | null = null;
+let cachedHighScore = 0;
+let pendingRunScore = 0;
+let pendingRunWorms = 0;
+let leaderboardUnsubscribe: (() => void) | null = null;
 
 // Active Skin state
 let selectedSkin: BirdSkin = "yellow";
@@ -103,9 +110,40 @@ async function init() {
   console.log("Firebase connection status:", firebaseSuccess ? "CONNECTED" : "OFFLINE/LOCAL STORAGE ONLY");
 
   // Hook up auth change listener
-  onAuthChanged((user) => {
+  onAuthChanged(async (user) => {
     currentUser = user;
+    if (user) {
+      // Fetch user profile info from Firestore
+      const userProfile = await getUserHighScore(user.uid);
+      if (userProfile) {
+        cachedUsername = userProfile.name;
+        cachedHighScore = userProfile.score;
+        localStorage.setItem("find_my_worm_player_name", userProfile.name);
+      } else {
+        cachedUsername = null;
+        cachedHighScore = 0;
+      }
+
+      // If we have a pending run score to submit from a previous run
+      if (pendingRunScore > 0) {
+        if (cachedUsername) {
+          const tempScore = pendingRunScore;
+          const tempWorms = pendingRunWorms;
+          pendingRunScore = 0;
+          pendingRunWorms = 0;
+          await submitScore(cachedUsername, tempScore, tempWorms);
+        } else {
+          // No username yet: updateAuthUI() will show the submission panel
+        }
+      }
+    } else {
+      cachedUsername = null;
+      cachedHighScore = 0;
+      pendingRunScore = 0;
+      pendingRunWorms = 0;
+    }
     updateAuthUI();
+    initLeaderboardSubscription();
   });
 
   // 2. Load last skin selection
@@ -312,14 +350,24 @@ function setupUIEventListeners() {
     localStorage.setItem("find_my_worm_player_name", name);
     submitScoreBtn.textContent = "Saving...";
 
-    const score = Number(finalScoreVal.textContent) || 0;
-    const worms = Number(finalWormsVal.textContent) || 0;
+    const score = pendingRunScore > 0 ? pendingRunScore : (Number(finalScoreVal.textContent) || 0);
+    const worms = pendingRunScore > 0 ? pendingRunWorms : (Number(finalWormsVal.textContent) || 0);
+
+    // Cache the chosen username
+    cachedUsername = name;
 
     await submitScore(name, score, worms);
     
-    // Hide submission pane and reload leaderboard
+    // Reset pending values
+    pendingRunScore = 0;
+    pendingRunWorms = 0;
+    
+    // Hide submission pane
     leaderboardSubmission.classList.add("hidden");
-    await loadLeaderboard();
+    
+    // Remove auto-sync message if any exists
+    const existing = document.getElementById("score-sync-status");
+    if (existing) existing.remove();
   });
 }
 
@@ -407,17 +455,50 @@ async function onStateChange(state: GameState, score: number, worms: number) {
       // Enable name/auth submission for positive scores
       if (score > 0) {
         if (currentUser) {
-          leaderboardSubmission.classList.remove("hidden");
-          leaderboardAuthPrompt.classList.add("hidden");
-          submitScoreBtn.disabled = false;
-          submitScoreBtn.textContent = "Submit";
+          if (cachedUsername) {
+            // Already has username: submit score in the background automatically!
+            leaderboardSubmission.classList.add("hidden");
+            leaderboardAuthPrompt.classList.add("hidden");
+            
+            // We do background submit
+            (async () => {
+              await submitScore(cachedUsername!, score, worms);
+              
+              // Verify we are still on gameover screen before showing sync message
+              if (!gameOverScreen.classList.contains("hidden")) {
+                const syncMsg = document.createElement("div");
+                syncMsg.id = "score-sync-status";
+                syncMsg.style.color = "var(--success)";
+                syncMsg.style.fontSize = "0.85rem";
+                syncMsg.style.marginTop = "8px";
+                syncMsg.style.fontWeight = "600";
+                syncMsg.textContent = "Score synced automatically! 🚀";
+                
+                const existing = document.getElementById("score-sync-status");
+                if (existing) existing.remove();
+                leaderboardSubmission.parentElement!.insertBefore(syncMsg, leaderboardSubmission);
+              }
+            })();
+          } else {
+            // Signed in but no username chose yet
+            leaderboardSubmission.classList.remove("hidden");
+            leaderboardAuthPrompt.classList.add("hidden");
+            submitScoreBtn.disabled = false;
+            submitScoreBtn.textContent = "Submit";
+          }
         } else {
+          // Not signed in: keep track of pending run to upload on sign-in
+          pendingRunScore = score;
+          pendingRunWorms = worms;
           leaderboardSubmission.classList.add("hidden");
           leaderboardAuthPrompt.classList.remove("hidden");
         }
       } else {
         leaderboardSubmission.classList.add("hidden");
         leaderboardAuthPrompt.classList.add("hidden");
+        // Remove auto-sync message if any exists
+        const existing = document.getElementById("score-sync-status");
+        if (existing) existing.remove();
       }
 
       // Check high score record

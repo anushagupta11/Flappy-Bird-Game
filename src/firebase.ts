@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, Firestore, where } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, Firestore, where, doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { 
   getAuth, 
   signInWithPopup, 
@@ -16,6 +16,7 @@ interface ScoreEntry {
   worms: number;
   timestamp: number;
   uid?: string | null;
+  email?: string | null;
 }
 
 export interface LeaderboardItem {
@@ -154,21 +155,43 @@ export async function submitScore(
   score: number,
   worms: number
 ): Promise<{ success: boolean; isGlobal: boolean }> {
+  const currentUser = auth?.currentUser;
+  
   const entry: ScoreEntry = {
     name: name.substring(0, 12).trim() || "Birdy",
     score,
     worms,
     timestamp: Date.now(),
-    uid: auth?.currentUser?.uid || null,
+    uid: currentUser?.uid || null,
+    email: currentUser?.email || null,
   };
 
   // Always save locally as a backup
   saveLocalScore(entry);
 
-  if (isFirebaseConnected() && db) {
+  if (isFirebaseConnected() && db && currentUser) {
     try {
-      await addDoc(collection(db, "leaderboard"), entry);
-      return { success: true, isGlobal: true };
+      const userDocRef = doc(db, "leaderboard", currentUser.uid);
+      const docSnap = await getDoc(userDocRef);
+      
+      if (docSnap.exists()) {
+        const existingData = docSnap.data();
+        const existingScore = Number(existingData.score) || 0;
+        const existingWorms = Number(existingData.worms) || 0;
+        
+        // Only update if the new score is higher (or same score but more worms)
+        if (score > existingScore || (score === existingScore && worms > existingWorms)) {
+          await setDoc(userDocRef, entry);
+          return { success: true, isGlobal: true };
+        } else {
+          // Existing score was higher, keep it but return success
+          return { success: true, isGlobal: true };
+        }
+      } else {
+        // First time submitting
+        await setDoc(userDocRef, entry);
+        return { success: true, isGlobal: true };
+      }
     } catch (err) {
       console.warn("Firestore save failed, fell back to local storage", err);
       return { success: true, isGlobal: false };
@@ -177,6 +200,76 @@ export async function submitScore(
 
   return { success: true, isGlobal: false };
 }
+
+// Fetch a user's existing username/high-score record on sign-in
+export async function getUserHighScore(uid: string): Promise<{ name: string; score: number; worms: number; email: string } | null> {
+  if (!db) return null;
+  try {
+    const docRef = doc(db, "leaderboard", uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+        name: data.name || "",
+        score: Number(data.score) || 0,
+        worms: Number(data.worms) || 0,
+        email: data.email || "",
+      };
+    }
+  } catch (err) {
+    console.error("Error fetching user high score:", err);
+  }
+  return null;
+}
+
+// Real-time Firestore leaderboard subscription
+export function subscribeLeaderboard(
+  onUpdate: (data: { isGlobal: boolean; scores: LeaderboardItem[] }) => void
+): () => void {
+  if (isFirebaseConnected() && db) {
+    try {
+      const q = query(
+        collection(db, "leaderboard"),
+        orderBy("score", "desc"),
+        limit(10)
+      );
+      
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const scores: LeaderboardItem[] = [];
+        let rank = 1;
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          scores.push({
+            rank: rank++,
+            name: data.name || "Anonymous",
+            score: Number(data.score) || 0,
+            worms: Number(data.worms) || 0,
+          });
+        });
+        onUpdate({ isGlobal: true, scores });
+      }, (err) => {
+        console.error("Firestore real-time subscription error:", err);
+      });
+      
+      return unsubscribe;
+    } catch (err) {
+      console.warn("Failed to subscribe to leaderboard", err);
+    }
+  }
+
+  // Fallback: Local Leaderboard (emulate snapshot with single emission)
+  const localScores = getLocalScores();
+  const scores: LeaderboardItem[] = localScores.map((s, idx) => ({
+    rank: idx + 1,
+    name: s.name,
+    score: s.score,
+    worms: s.worms,
+  })).slice(0, 10);
+  
+  onUpdate({ isGlobal: false, scores });
+  return () => {};
+}
+
 
 // Fetch top 10 leaderboard entries
 export async function getLeaderboard(): Promise<{
