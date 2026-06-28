@@ -4,7 +4,6 @@ import { BirdSkin } from "./game/Bird";
 import { 
   initializeFirebase, 
   submitScore, 
-  getLeaderboard, 
   isFirebaseConnected, 
   saveFirebaseConfig, 
   clearFirebaseConfig, 
@@ -92,7 +91,6 @@ const usernameErrorMsg = document.getElementById("username-error-msg") as HTMLDi
 // Auth State
 let currentUser: any = null;
 let cachedUsername: string | null = null;
-let cachedHighScore = 0;
 let pendingRunScore = 0;
 let pendingRunWorms = 0;
 let leaderboardUnsubscribe: (() => void) | null = null;
@@ -117,11 +115,9 @@ async function init() {
       const userProfile = await getUserHighScore(user.uid);
       if (userProfile) {
         cachedUsername = userProfile.name;
-        cachedHighScore = userProfile.score;
         localStorage.setItem("find_my_worm_player_name", userProfile.name);
       } else {
         cachedUsername = null;
-        cachedHighScore = 0;
       }
 
       // If we have a pending run score to submit from a previous run
@@ -138,7 +134,6 @@ async function init() {
       }
     } else {
       cachedUsername = null;
-      cachedHighScore = 0;
       pendingRunScore = 0;
       pendingRunWorms = 0;
     }
@@ -542,15 +537,20 @@ function onWormsUpdate(worms: number) {
    Leaderboard Loaders
    ========================================================================== */
 
-async function loadLeaderboard() {
-  const loadingHtml = '<li class="loading-item">Fetching ranking...</li>';
-  leaderboardList.innerHTML = loadingHtml;
-  globalLeaderboardList.innerHTML = loadingHtml;
-  
-  const statusText = isFirebaseConnected() ? "Global (DB)" : "Offline (Local)";
-  leaderboardTypeLabel.textContent = statusText;
-  globalLeaderboardTypeLabel.textContent = statusText;
-  if (isFirebaseConnected()) {
+function initLeaderboardSubscription() {
+  if (leaderboardUnsubscribe) {
+    leaderboardUnsubscribe();
+  }
+  leaderboardUnsubscribe = subscribeLeaderboard((result) => {
+    renderLeaderboardUI(result.isGlobal, result.scores);
+  });
+}
+
+function renderLeaderboardUI(isGlobal: boolean, scores: any[]) {
+  const actualStatusText = isGlobal ? "Global (DB)" : "Offline (Local)";
+  leaderboardTypeLabel.textContent = actualStatusText;
+  globalLeaderboardTypeLabel.textContent = actualStatusText;
+  if (isGlobal) {
     leaderboardTypeLabel.classList.add("online");
     globalLeaderboardTypeLabel.classList.add("online");
   } else {
@@ -558,90 +558,73 @@ async function loadLeaderboard() {
     globalLeaderboardTypeLabel.classList.remove("online");
   }
 
-  try {
-    const { isGlobal, scores } = await getLeaderboard();
-    
-    // Update badge type dynamically if it changed during load
-    const actualStatusText = isGlobal ? "Global (DB)" : "Offline (Local)";
-    leaderboardTypeLabel.textContent = actualStatusText;
-    globalLeaderboardTypeLabel.textContent = actualStatusText;
-    if (isGlobal) {
-      leaderboardTypeLabel.classList.add("online");
-      globalLeaderboardTypeLabel.classList.add("online");
-    } else {
-      leaderboardTypeLabel.classList.remove("online");
-      globalLeaderboardTypeLabel.classList.remove("online");
-    }
-
-    if (scores.length === 0) {
-      const emptyHtml = '<li class="loading-item">No records yet! Be the first!</li>';
-      leaderboardList.innerHTML = emptyHtml;
-      globalLeaderboardList.innerHTML = emptyHtml;
-      return;
-    }
-
-    leaderboardList.innerHTML = "";
-    globalLeaderboardList.innerHTML = "";
-
-    const createScoreItem = (entry: any) => {
-      const li = document.createElement("li");
-      
-      const infoDiv = document.createElement("div");
-      infoDiv.className = "leaderboard-player-info";
-      
-      const rankSpan = document.createElement("span");
-      rankSpan.className = "player-rank";
-      rankSpan.textContent = `#${entry.rank}`;
-      
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "player-name";
-      nameSpan.textContent = entry.name;
-      
-      infoDiv.appendChild(rankSpan);
-      infoDiv.appendChild(nameSpan);
-
-      const detailsDiv = document.createElement("div");
-      detailsDiv.className = "player-details";
-
-      const scoreSpan = document.createElement("span");
-      scoreSpan.className = "player-score";
-      scoreSpan.textContent = String(entry.score);
-
-      const wormsSpan = document.createElement("span");
-      wormsSpan.className = "player-worms-badge";
-      wormsSpan.innerHTML = `
-        <svg class="svg-icon bug" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
-          <rect width="8" height="14" x="8" y="5" rx="4"></rect>
-          <path d="m19 7-3 2"></path>
-          <path d="m5 7 3 2"></path>
-          <path d="m19 19-3-2"></path>
-          <path d="m5 19 3-2"></path>
-          <path d="M20 13h-4"></path>
-          <path d="M4 13h4"></path>
-          <path d="m10 4 1 2"></path>
-          <path d="m14 4-1 2"></path>
-        </svg>
-        ${entry.worms}
-      `;
-
-      detailsDiv.appendChild(scoreSpan);
-      detailsDiv.appendChild(wormsSpan);
-
-      li.appendChild(infoDiv);
-      li.appendChild(detailsDiv);
-      return li;
-    };
-
-    scores.forEach((entry) => {
-      leaderboardList.appendChild(createScoreItem(entry));
-      globalLeaderboardList.appendChild(createScoreItem(entry));
-    });
-  } catch (err) {
-    console.error("Leaderboard render error", err);
-    const errorHtml = '<li class="loading-item">Failed to load leaderboard</li>';
-    leaderboardList.innerHTML = errorHtml;
-    globalLeaderboardList.innerHTML = errorHtml;
+  if (scores.length === 0) {
+    const emptyHtml = '<li class="loading-item">No records yet! Be the first!</li>';
+    leaderboardList.innerHTML = emptyHtml;
+    globalLeaderboardList.innerHTML = emptyHtml;
+    return;
   }
+
+  leaderboardList.innerHTML = "";
+  globalLeaderboardList.innerHTML = "";
+
+  const createScoreItem = (entry: any) => {
+    const li = document.createElement("li");
+    
+    const infoDiv = document.createElement("div");
+    infoDiv.className = "leaderboard-player-info";
+    
+    const rankSpan = document.createElement("span");
+    rankSpan.className = "player-rank";
+    rankSpan.textContent = `#${entry.rank}`;
+    
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "player-name";
+    nameSpan.textContent = entry.name;
+    
+    infoDiv.appendChild(rankSpan);
+    infoDiv.appendChild(nameSpan);
+
+    const detailsDiv = document.createElement("div");
+    detailsDiv.className = "player-details";
+
+    const scoreSpan = document.createElement("span");
+    scoreSpan.className = "player-score";
+    scoreSpan.textContent = String(entry.score);
+
+    const wormsSpan = document.createElement("span");
+    wormsSpan.className = "player-worms-badge";
+    wormsSpan.innerHTML = `
+      <svg class="svg-icon bug" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+        <rect width="8" height="14" x="8" y="5" rx="4"></rect>
+        <path d="m19 7-3 2"></path>
+        <path d="m5 7 3 2"></path>
+        <path d="m19 19-3-2"></path>
+        <path d="m5 19 3-2"></path>
+        <path d="M20 13h-4"></path>
+        <path d="M4 13h4"></path>
+        <path d="m10 4 1 2"></path>
+        <path d="m14 4-1 2"></path>
+      </svg>
+      ${entry.worms}
+    `;
+
+    detailsDiv.appendChild(scoreSpan);
+    detailsDiv.appendChild(wormsSpan);
+
+    li.appendChild(infoDiv);
+    li.appendChild(detailsDiv);
+    return li;
+  };
+
+  scores.forEach((entry) => {
+    leaderboardList.appendChild(createScoreItem(entry));
+    globalLeaderboardList.appendChild(createScoreItem(entry));
+  });
+}
+
+async function loadLeaderboard() {
+  initLeaderboardSubscription();
 }
 
 function updateAuthUI() {
@@ -663,15 +646,20 @@ function updateAuthUI() {
     profileUsername.textContent = displayName;
     
     // Autofill name on Game Over screen
-    const savedName = localStorage.getItem("find_my_worm_player_name");
+    const savedName = localStorage.getItem("find_my_worm_player_name") || cachedUsername;
     playerNameInput.value = savedName || displayName.substring(0, 10);
     usernameErrorMsg.classList.add("hidden");
 
     // Toggle Game Over submission panel
     leaderboardAuthPrompt.classList.add("hidden");
+    
     const score = Number(finalScoreVal.textContent) || 0;
     if (score > 0 && !gameOverScreen.classList.contains("hidden")) {
-      leaderboardSubmission.classList.remove("hidden");
+      if (cachedUsername) {
+        leaderboardSubmission.classList.add("hidden");
+      } else {
+        leaderboardSubmission.classList.remove("hidden");
+      }
     }
   } else {
     // User is logged out

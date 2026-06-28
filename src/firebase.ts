@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, Firestore, where, doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
+import { getFirestore, collection, getDocs, query, orderBy, limit, Firestore, where, doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { 
   getAuth, 
   signInWithPopup, 
